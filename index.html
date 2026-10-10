@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VK Editor — ГрандСервис</title>
+<style>
+:root{--navy:#07152f;--blue:#1976d2;--cyan:#72d7ff;--white:#fff;--ink:#0a1833}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef5fb;color:var(--ink)}
+header{position:sticky;top:0;z-index:5;background:rgba(7,21,47,.97);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:18px;margin:0}header small{opacity:.75}
+main{max-width:1050px;margin:auto;padding:14px}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+.panel{background:#fff;border-radius:18px;padding:14px;box-shadow:0 4px 18px #0a18331a}
+label{font-size:13px;font-weight:700;display:block;margin:10px 0 5px}
+input,select,textarea,button{font:inherit}input[type=text],textarea,select{width:100%;border:1px solid #c9d8e8;border-radius:12px;padding:11px;background:#fff}
+textarea{min-height:74px;resize:vertical}
+input[type=file]{width:100%;padding:8px;background:#f3f7fb;border-radius:10px}
+button{border:0;border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:#fff}.secondary{background:#e9f2fb;color:var(--ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.canvas-wrap{display:flex;justify-content:center;background:#dfeaf5;border-radius:16px;padding:12px;overflow:auto}
+canvas{display:block;max-width:100%;height:auto;border-radius:8px;box-shadow:0 8px 24px #0002}
+.hint{font-size:12px;color:#60738a;line-height:1.4}
+.badge{display:inline-block;background:#dff5ff;color:#11658a;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:700}
+@media(min-width:800px){.grid{grid-template-columns:330px 1fr}.editor{position:sticky;top:74px;height:max-content}}
+</style>
+</head>
+<body>
+<header><div><h1>VK Editor · ГрандСервис</h1><small>мобильный редактор шаблонов</small></div><span class="badge">v1</span></header>
+<main><div class="grid">
+<section class="panel editor">
+<label>Шаблон</label>
+<select id="template">
+<option value="post">Пост / карусель</option>
+<option value="story">Сторис</option>
+<option value="clip">Обложка клипа</option>
+<option value="team">Карточка состава</option>
+<option value="widget">Виджет</option>
+<option value="cover">Обложка сообщества</option>
+</select>
+
+<label>Главный текст</label><textarea id="title">НАШ ОТРЯД</textarea>
+<label>Дополнительный текст</label><textarea id="subtitle">ЭТО ЛЮДИ, КОТОРЫЕ ВДОХНОВЛЯЮТ</textarea>
+<label>Имя / подпись</label><input id="name" type="text" value="ГрандСервис">
+<label>Фото</label><input id="photo" type="file" accept="image/*">
+
+<div class="row" style="margin-top:12px">
+<button class="primary" id="download">Скачать PNG</button>
+<button class="secondary" id="reset">Сбросить</button>
+</div>
+<p class="hint">Текст обновляется автоматически. Фото можно заменить прямо с телефона. Кнопка «Скачать PNG» сохраняет готовый макет.</p>
+</section>
+
+<section class="panel">
+<div class="canvas-wrap"><canvas id="c" width="1080" height="1080"></canvas></div>
+<p class="hint">Стиль основан на присланном тобой брендбуке: тёмно-синий фон, светло-голубые акценты, белая типографика, планета + самолёт, звёзды и орбитальная линия.</p>
+</section>
+</div></main>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+const $=id=>document.getElementById(id);
+let img=null;
+function rr(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function bg(){let g=x.createLinearGradient(0,0,c.width,c.height);g.addColorStop(0,'#06132e');g.addColorStop(.55,'#0b2e68');g.addColorStop(1,'#07152f');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+ for(let i=0;i<30;i++){let px=(i*173)%1080,py=(i*97)%1080;x.fillStyle='rgba(255,255,255,.65)';x.beginPath();x.arc(px,py,2+(i%3),0,Math.PI*2);x.fill()}
+ // swoosh
+ x.strokeStyle='rgba(114,215,255,.22)';x.lineWidth=70;x.beginPath();x.arc(350,850,650,-.2,2.5);x.stroke();
+}
+function emblem(cx,cy,s=1){x.save();x.translate(cx,cy);x.strokeStyle='#fff';x.lineWidth=6*s;x.setLineDash([12*s,10*s]);x.beginPath();x.arc(0,0,115*s,0,Math.PI*2);x.stroke();x.setLineDash([]);x.fillStyle='#fff';x.beginPath();x.arc(0,0,72*s,0,Math.PI*2);x.fill();x.fillStyle='#1c78c9';x.beginPath();x.arc(8*s,-3*s,64*s,0,Math.PI*2);x.fill();x.fillStyle='#fff';x.font=`bold ${46*s}px Arial`;x.textAlign='center';x.textBaseline='middle';x.fillText('✈',35*s,-48*s);x.restore()}
+function fitText(text,maxWidth,size,weight='800'){let words=text.split(/\s+/),lines=[],line='';x.font=`${weight} ${size}px Arial`;for(const w of words){let t=line?line+' '+w:w;if(x.measureText(t).width>maxWidth&&line){lines.push(line);line=w}else line=t}if(line)lines.push(line);return lines}
+function drawPhoto(x0,y0,w,h){if(!img)return false;let r=Math.max(w/img.width,h/img.height),nw=img.width*r,nh=img.height*r,sx=x0+(w-nw)/2,sy=y0+(h-nh)/2;x.save();x.beginPath();x.roundRect(x0,y0,w,h,30);x.clip();x.drawImage(img,sx,sy,nw,nh);x.restore();return true}
+function draw(){
+ bg();let t=$('template').value,title=$('title').value,sub=$('subtitle').value,name=$('name').value;
+ if(t==='story'){c.width=720;c.height=1280;bg();drawPhoto(45,250,630,720);x.fillStyle='#fff';x.font='700 28px Arial';x.fillText(name,55,90);x.fillStyle='#72d7ff';x.font='700 18px Arial';x.fillText('СТУДЕНЧЕСКИЙ СЕРВИСНЫЙ ОТРЯД',55,122);emblem(575,112,.45);x.fillStyle='#fff';x.font='800 58px Arial';fitText(title,600,58).forEach((l,i)=>x.fillText(l,55,1040+i*68));x.fillStyle='#bfeeff';x.font='28px Arial';fitText(sub,600,28,'700').forEach((l,i)=>x.fillText(l,55,1170+i*38));return}
+ if(t==='clip'){c.width=720;c.height=960;bg();drawPhoto(35,80,650,600);emblem(360,360,.7);x.fillStyle='#fff';x.font='800 64px Arial';fitText(title,620,64).slice(0,3).forEach((l,i)=>x.fillText(l,50,770+i*72));rr(x,50,850,250,60,30,'#72d7ff');x.fillStyle='#07152f';x.font='800 25px Arial';x.fillText('КЛИПЫ ▶',75,889);return}
+ if(t==='team'){c.width=700;c.height=980;bg();rr(x,30,30,640,920,35,'#f7fbff');drawPhoto(70,80,560,560);x.fillStyle='#07152f';x.font='800 26px Arial';x.fillText('КОМАНДНЫЙ СОСТАВ',70,700);x.fillStyle='#1976d2';x.font='800 62px Arial';fitText(title,560,62).slice(0,2).forEach((l,i)=>x.fillText(l,70,780+i*70));x.fillStyle='#07152f';x.font='28px Arial';x.fillText(name,70,900);return}
+ if(t==='widget'){c.width=1000;c.height=500;bg();rr(x,40,40,920,420,40,'#0b2e68','#72d7ff');emblem(180,250,.8);x.fillStyle='#fff';x.font='800 72px Arial';fitText(title,650,72).slice(0,2).forEach((l,i)=>x.fillText(l,350,210+i*80));x.fillStyle='#bfeeff';x.font='30px Arial';x.fillText(sub,350,400);return}
+ if(t==='cover'){c.width=1600;c.height=650;bg();emblem(1250,320,1.35);x.fillStyle='#fff';x.font='800 96px Arial';fitText(title,850,96).slice(0,2).forEach((l,i)=>x.fillText(l,90,230+i*105));x.fillStyle='#bfeeff';x.font='34px Arial';fitText(sub,800,34).slice(0,2).forEach((l,i)=>x.fillText(l,95,470+i*45));x.fillStyle='#fff';x.font='italic 34px cursive';x.fillText('Вместе к большим высотам',930,570);return}
+ // post
+ drawPhoto(600,100,400,760);emblem(260,260,.9);x.fillStyle='#fff';x.font='800 78px Arial';fitText(title,500,78).slice(0,3).forEach((l,i)=>x.fillText(l,70,570+i*88));x.fillStyle='#bfeeff';x.font='700 30px Arial';fitText(sub,500,30).slice(0,4).forEach((l,i)=>x.fillText(l,70,850+i*42));x.fillStyle='#fff';x.font='700 22px Arial';x.fillText(name,70,1040);x.fillStyle='#72d7ff';x.beginPath();x.arc(960,1010,36,0,Math.PI*2);x.fill();x.fillStyle='#07152f';x.font='bold 30px Arial';x.fillText('→',949,1020)
+}
+['template','title','subtitle','name'].forEach(id=>$(id).addEventListener('input',draw));
+$('template').addEventListener('change',draw);
+$('photo').addEventListener('change',e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{img=new Image();img.onload=draw;img.src=r.result};r.readAsDataURL(f)});
+$('reset').onclick=()=>{ $('title').value='НАШ ОТРЯД';$('subtitle').value='ЭТО ЛЮДИ, КОТОРЫЕ ВДОХНОВЛЯЮТ';$('name').value='ГрандСервис';$('photo').value='';img=null;draw()};
+$('download').onclick=()=>{let a=document.createElement('a');a.download='vk-template.png';a.href=c.toDataURL('image/png');a.click()};
+draw();
+</script>
+</body></html>
